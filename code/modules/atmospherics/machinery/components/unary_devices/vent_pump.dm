@@ -59,8 +59,7 @@
 	A.air_vent_names -= id_tag
 	A.air_vent_info -= id_tag
 
-	if(SSradio)
-		SSradio.remove_object(src,frequency)
+	SSradio.remove_object(src,frequency)
 	radio_connection = null
 	return ..()
 
@@ -97,7 +96,23 @@
 		return
 
 	if(!NODE1 || !on || stat & (NOPOWER|BROKEN))
-		icon_state = "vent_off"
+		if(icon_state == "vent_welded")
+			icon_state = "vent_off"
+			return
+
+		if(pump_direction & RELEASING)
+			icon_state = "vent_out-off"
+		else //pump_direction == SIPHONING
+			icon_state = "vent_in-off"
+		return
+
+	if(icon_state == ("vent_out-off" || "vent_in-off" || "vent_off"))
+		if(pump_direction & RELEASING)
+			icon_state = "vent_out"
+			flick("vent_out-starting", src)
+		else //pump_direction == SIPHONING
+			icon_state = "vent_in"
+			flick("vent_in-starting", src)
 		return
 
 	if(pump_direction & RELEASING)

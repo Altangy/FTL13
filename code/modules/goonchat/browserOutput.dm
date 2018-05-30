@@ -169,6 +169,18 @@ GLOBAL_DATUM_INIT(iconCache, /savefile, new("data/iconCache.sav")) //Cache of ic
 //Converts an icon to base64. Operates by putting the icon in the iconCache savefile,
 // exporting it as text, and then parsing the base64 from that.
 // (This relies on byond automatically storing icons in savefiles as base64)
+/proc/grab_client(target)
+	if(istype(target, /client))
+		return target
+	else if(ismob(target))
+		var/mob/M = target
+		if(M.client)
+			return M.client
+	else if(istype(target, /datum/mind))
+		var/datum/mind/M = target
+		if(M.current && M.current.client)
+			return M.current.client
+
 /proc/icon2base64(icon/icon, iconKey = "misc")
 	if (!isicon(icon))
 		return FALSE
@@ -180,21 +192,24 @@ GLOBAL_DATUM_INIT(iconCache, /savefile, new("data/iconCache.sav")) //Cache of ic
 /proc/bicon(thing)
 	if (!thing)
 		return
-
+	var/static/list/bicon_cache = list()
 	if (isicon(thing))
-		//Icons get pooled constantly, references are no good here.
-		/*if (!bicon_cache["\ref[obj]"]) // Doesn't exist yet, make it.
-			bicon_cache["\ref[obj]"] = icon2base64(obj)
-		return "<img class='icon misc' src='data:image/png;base64,[bicon_cache["\ref[obj]"]]'>"*/
-		return "<img class='icon misc' src='data:image/png;base64,[icon2base64(thing)]'>"
+		var/icon/I = thing
+		var/icon_md5 = md5(I)
+		if (!bicon_cache[icon_md5]) // Doesn't exist yet, make it.
+			I = icon(I) //copy it
+			I.Scale(16,16) //scale it
+			bicon_cache[icon_md5] = icon2base64(thing) //base64 it
+		return "<img class='icon misc' src='data:image/png;base64,[bicon_cache[icon_md5]]'>"
 
 	// Either an atom or somebody fucked up and is gonna get a runtime, which I'm fine with.
 	var/atom/A = thing
 	var/key = "[istype(A.icon, /icon) ? "\ref[A.icon]" : A.icon]:[A.icon_state]"
 
-	var/static/list/bicon_cache = list()
+
 	if (!bicon_cache[key]) // Doesn't exist, make it.
 		var/icon/I = icon(A.icon, A.icon_state, SOUTH, 1)
+		I.Scale(16,16)
 		if (ishuman(thing)) // Shitty workaround for a BYOND issue.
 			var/icon/temp = I
 			I = icon()
@@ -243,6 +258,7 @@ GLOBAL_DATUM_INIT(iconCache, /savefile, new("data/iconCache.sav")) //Cache of ic
 	message = replacetext(message, "\proper", "")
 	message = replacetext(message, "\n", "<br>")
 	message = replacetext(message, "\t", "[GLOB.TAB][GLOB.TAB]")
+	message = r_text2unicode(message)
 
 	for(var/I in targets)
 		//Grab us a client if possible
@@ -264,15 +280,3 @@ GLOBAL_DATUM_INIT(iconCache, /savefile, new("data/iconCache.sav")) //Cache of ic
 
 		// url_encode it TWICE, this way any UTF-8 characters are able to be decoded by the Javascript.
 		C << output(url_encode(url_encode(message)), "browseroutput:output")
-
-/proc/grab_client(target)
-	if(istype(target, /client))
-		return target
-	else if(ismob(target))
-		var/mob/M = target
-		if(M.client)
-			return M.client
-	else if(istype(target, /datum/mind))
-		var/datum/mind/M = target
-		if(M.current && M.current.client)
-			return M.current.client

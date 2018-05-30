@@ -128,8 +128,7 @@ GLOBAL_LIST_INIT(meteorsC, list(/obj/effect/meteor/dust)) //for space dust event
 /obj/effect/meteor/New()
 	..()
 	GLOB.meteor_list += src
-	if(SSaugury)
-		SSaugury.register_doom(src, threat)
+	SSaugury.register_doom(src, threat)
 	SpinAnimation()
 	QDEL_IN(src, lifetime)
 
@@ -140,7 +139,7 @@ GLOBAL_LIST_INIT(meteorsC, list(/obj/effect/meteor/dust)) //for space dust event
 		get_hit()
 
 /obj/effect/meteor/proc/ram_turf(turf/T)
-	//first bust whatever is in the turf
+	//first bust whatever is in the turf or check if we hit a shield
 	for(var/atom/A in T)
 		if(A != src)
 			if(isliving(A))

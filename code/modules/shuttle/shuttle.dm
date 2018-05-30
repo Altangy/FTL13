@@ -208,9 +208,17 @@
 
 	var/planet_dock = FALSE //var to help with escape pod landings
 
+	var/allowed_shuttles = 0
+	var/dock_do_not_show = TRUE
+	var/use_dock_distance = FALSE
+	var/dock_distance = 0
+
+/obj/docking_port/stationary/New()
+	. = ..()
+	SSshuttle.stationary += src //This has to be here to pre-empt ruin spawning
+
 /obj/docking_port/stationary/Initialize()
 	. = ..()
-	SSshuttle.stationary += src
 	if(!id)
 		id = "[SSshuttle.stationary.len]"
 	if(name == "dock")
@@ -294,6 +302,8 @@
 	var/engine_coeff = 1 //current engine coeff
 	var/current_engines = 0 //current engine power
 	var/initial_engines = 0 //initial engine power
+	var/allowed_docks = 0 //Mappers will need to set this themselves
+	var/default_call_time
 
 /obj/docking_port/mobile/proc/register()
 	SSshuttle.mobile += src
@@ -380,6 +390,7 @@
 	else
 		var/msg = "Shuttle [src] cannot dock at [S], error: [status]"
 		message_admins(msg)
+		cancel()
 		return FALSE
 
 /obj/docking_port/mobile/proc/transit_failure()
@@ -412,6 +423,14 @@
 		if(SHUTTLE_IDLE, SHUTTLE_IGNITING)
 			destination = S
 			mode = SHUTTLE_IGNITING
+			if(S.use_dock_distance)
+				var/obj/docking_port/stationary/fob/P = get_docked()
+				if(P.current_planet != SSstarmap.current_planet && istype(S,/obj/docking_port/stationary/fob/fob_dock))
+					callTime = default_call_time*2 //Double time due to returning via bluespace tether
+				else if(S.dock_distance != P.dock_distance)
+					callTime = default_call_time * abs(S.dock_distance - P.dock_distance) / 100
+				else
+					callTime = default_call_time / 10 //Short time due to same location
 			setTimer(ignitionTime)
 
 //recall the shuttle to where it was previously
@@ -549,7 +568,7 @@
 	var/list/new_turfs = return_ordered_turfs(new_dock.x, new_dock.y, new_dock.z, new_dock.dir)
 	/**************************************************************************************************************/
 
-	var/area/underlying_old_area = locate("[underlying_area_type]")
+	var/area/underlying_old_area = locate(underlying_area_type) in GLOB.sortedAreas
 	if(!underlying_old_area)
 		underlying_old_area = new underlying_area_type(null)
 
@@ -589,7 +608,7 @@
 
 		if(move_mode & MOVE_AREA)
 			areas_to_move[old_area] = TRUE
-		
+
 		old_turfs[place] = move_mode
 
 	/*******************************************All onShuttleMove procs******************************************/
@@ -796,7 +815,7 @@
 			dst = previous
 		else
 			dst = destination
-		. += " towards [dst ? dst.name : "unknown location"] ([timeLeft(600)] minutes)"
+		. += " towards [dst ? dst.name : "unknown location"] ([timeLeft(10)] seconds)"
 
 
 // attempts to locate /obj/machinery/computer/shuttle with matching ID inside the shuttle
@@ -833,7 +852,7 @@
 		return TRUE
 	return FALSE
 
-// Losing all initial engines should get you 2 
+// Losing all initial engines should get you 2
 // Adding another set of engines at 0.5 time
 /obj/docking_port/mobile/proc/alter_engines(mod)
 	if(mod == 0)
@@ -872,7 +891,7 @@
 		if(initial_engines > 0)
 			change_per_engine = (ENGINE_COEFF_MAX -  1) / initial_engines //just linear drop to max delay
 		return Clamp(1 + delta * change_per_engine,ENGINE_COEFF_MIN,ENGINE_COEFF_MAX)
-		
+
 
 /obj/docking_port/mobile/proc/in_flight()
 	switch(mode)

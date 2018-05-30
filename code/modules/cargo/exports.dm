@@ -38,6 +38,8 @@ Credit dupes that require a lot of manual work shouldn't be removed, unless they
 	// We go backwards, so it'll be innermost objects sold first
 	for(var/i in reverseRange(contents))
 		var/atom/movable/thing = i
+		if(is_type_in_typecache(thing,GLOB.blacklisted_cargo_types))//Does the item contain something unsellable
+			return UNSELLABLE_ITEM
 		for(var/datum/export/E in GLOB.exports_list)
 			if(!E)
 				continue
@@ -66,7 +68,7 @@ Credit dupes that require a lot of manual work shouldn't be removed, unless they
 	var/list/export_types = list()	// Type of the exported object. If none, the export datum is considered base type.
 	var/include_subtypes = TRUE		// Set to FALSE to make the datum apply only to a strict type.
 	var/list/exclude_types = list()	// Types excluded from export
-
+	var/list/cost_modifiers	// list of keywords to boost the cost by. Used in calculatePrices.
 	// Used by print-out
 	var/total_cost = 0
 	var/total_amount = 0
